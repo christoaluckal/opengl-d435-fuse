@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <iostream>
 
 #include<SOIL/SOIL.h>
 // Include GLEW
@@ -201,14 +202,15 @@ int drawObj(const char *path )
 	return 0;
 }
 
-int drawObj_s(const char *path )
+std::vector< unsigned char > drawObj_s(const char *path )
 {
+	std::vector< unsigned char > buf(1024 * 768 * 3 );
 	// Initialise GLFW
 	if( !glfwInit() )
 	{
 		fprintf( stderr, "Failed to initialize GLFW\n" );
 		getchar();
-		return -1;
+		return buf;
 	}
 
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -223,7 +225,7 @@ int drawObj_s(const char *path )
 		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
 		getchar();
 		glfwTerminate();
-		return -1;
+		return buf;
 	}
 	glfwMakeContextCurrent(window);
 
@@ -233,7 +235,7 @@ int drawObj_s(const char *path )
 		fprintf(stderr, "Failed to initialize GLEW\n");
 		getchar();
 		glfwTerminate();
-		return -1;
+		return buf;
 	}
 
 	// Ensure we can capture the escape key being pressed below
@@ -345,17 +347,17 @@ int drawObj_s(const char *path )
 
 	// Swap buffers
 	glfwSwapBuffers(window);
-	std::vector< unsigned char > buf( 1024 * 768 * 3 );
+	// std::vector< unsigned char > buf( 1024 * 768 * 3 );
 	glRotatef(180.0, 1.0, 0.0, 0.0);
-	glReadPixels( 0, 0, 1024, 768, GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
-
-	int err = SOIL_save_image
-		(
-		"img.bmp",
-		SOIL_SAVE_TYPE_BMP,
-		1024, 768, 3,
-		&buf[0]
-		);
+	glReadPixels( 0, 0, 1024, 768, GL_BGR, GL_UNSIGNED_BYTE, &buf[0]);
+	// int err = SOIL_save_image
+	// 	(
+	// 	"img.bmp",
+	// 	SOIL_SAVE_TYPE_BMP,
+	// 	1024, 768, 3,
+	// 	&buf[0]
+	// 	);
+	glfwHideWindow(window);
 	glfwPollEvents();
  // Check if the ESC key was pressed or the window was closed
 	// Cleanup VBO and shader
@@ -368,6 +370,6 @@ int drawObj_s(const char *path )
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();
 
-	return 0;
+	return buf;
 }
 
