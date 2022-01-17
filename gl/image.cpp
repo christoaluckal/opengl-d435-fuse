@@ -4,6 +4,6 @@ using namespace cv;
 int main(int argc, char** argv) 
 { 
  // Read the image file 
- Mat image = imread("ref.png"); 
+ Mat image1 = imread("ref.png"); 
  return 0; 
 }
