@@ -427,3 +427,4 @@ void callback(int pos, void*)
 }
 
 // ./a.out --config=detection/darknet/cfg/yolov3.cfg --model=detection/yolov3.weights --classes=object_detection_classes_pascal_voc.txt --width=640 --height=480 --scale=0.00392 --rgb
+// g++ custom_obj_det.cpp `pkg-config --cflags --libs opencv4`
