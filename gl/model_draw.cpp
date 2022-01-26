@@ -128,6 +128,8 @@ int drawObj(const char *path )
 		glm::mat4 ProjectionMatrix = getProjectionMatrix();
 		glm::mat4 ViewMatrix = getViewMatrix();
 		glm::mat4 ModelMatrix = glm::mat4(1.0);
+		ModelMatrix = glm::rotate(ModelMatrix,glm::radians(0.0f),glm::vec3(0.0, 1.0, 0.0));
+		ModelMatrix = glm::translate(ModelMatrix,glm::vec3(0.0f, 0.0f, 0.0f));
 		glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
 
 		// Send our transformation to the currently bound shader, 
@@ -348,7 +350,7 @@ std::vector< unsigned char > drawObj_s(const char *path )
 	// Swap buffers
 	glfwSwapBuffers(window);
 	// std::vector< unsigned char > buf( 1024 * 768 * 3 );
-	glRotatef(180.0, 1.0, 0.0, 0.0);
+	// glRotatef(180.0, 1.0, 1.0, 1.0);
 	glReadPixels( 0, 0, 1024, 768, GL_BGR, GL_UNSIGNED_BYTE, &buf[0]);
 	// int err = SOIL_save_image
 	// 	(
