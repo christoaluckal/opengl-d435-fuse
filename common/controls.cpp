@@ -31,10 +31,10 @@ float initialFoV = 86.0f;
 
 float speed = 3.0f; // 3 units / second
 float mouseSpeed = 0.005f;
+double scale_fn = 1;
 
 
-
-void computeMatricesFromInputs(){
+double computeMatricesFromInputs(){
 
 	// glfwGetTime is called only once, the first time this function is called
 	static double lastTime = glfwGetTime();
@@ -42,6 +42,7 @@ void computeMatricesFromInputs(){
 	// Compute time difference between current and last frame
 	double currentTime = glfwGetTime();
 	float deltaTime = float(currentTime - lastTime);
+	
 
 	// Get mouse position
 	double xpos, ypos;
@@ -95,7 +96,12 @@ void computeMatricesFromInputs(){
 	if (glfwGetKey( window, GLFW_KEY_G ) == GLFW_PRESS){
 		initialFoV-=1;
 	}
-
+	if (glfwGetKey( window, GLFW_KEY_S ) == GLFW_PRESS){
+		scale_fn+=0.01;
+	}
+	if (glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS){
+		scale_fn-=0.01;
+	}
 	float FoV = initialFoV;// - 5 * glfwGetMouseWheel(); // Now GLFW 3 requires setting up a callback for this. It's a bit too complicated for this beginner's tutorial, so it's disabled instead.
 
 	// Projection matrix : 45� Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
@@ -109,4 +115,5 @@ void computeMatricesFromInputs(){
 
 	// For the next frame, the "last time" will be "now"
 	lastTime = currentTime;
+	return scale_fn;
 }

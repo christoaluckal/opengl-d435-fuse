@@ -124,14 +124,15 @@ int drawObj(const char *path )
 		glUseProgram(programID);
 
 		// Compute the MVP matrix from keyboard and mouse input
-		computeMatricesFromInputs();
+		double scale = computeMatricesFromInputs();
 		glm::mat4 ProjectionMatrix = getProjectionMatrix();
 		glm::mat4 ViewMatrix = getViewMatrix();
 		glm::mat4 ModelMatrix = glm::mat4(1.0);
 		ModelMatrix = glm::rotate(ModelMatrix,glm::radians(0.0f),glm::vec3(0.0, 1.0, 0.0));
 		ModelMatrix = glm::translate(ModelMatrix,glm::vec3(0.0f, 0.0f, 0.0f));
+		ModelMatrix = glm::scale(ModelMatrix,glm::vec3(scale));
 		glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
-
+		std::cout << scale << '\n';
 		// Send our transformation to the currently bound shader, 
 		// in the "MVP" uniform
 		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
