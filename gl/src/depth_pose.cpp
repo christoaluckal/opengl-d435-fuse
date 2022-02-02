@@ -2,7 +2,7 @@
 // Copyright(c) 2015-2017 Intel Corporation. All Rights Reserved.
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
-#include "example.hpp"          // Include short list of convenience functions for rendering
+#include "../helpers/example.hpp"          // Include short list of convenience functions for rendering
 
 #include <algorithm>            // std::min, std::max
 #include <fstream>              // std::ifstream

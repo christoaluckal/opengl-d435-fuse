@@ -3,7 +3,7 @@
 #include <librealsense2/rs.hpp>
 #include <iostream>
 #include <iomanip>
-#include "example_utils.hpp"
+#include "../helpers/example_utils.hpp"
 
 int main(int argc, char * argv[]) try
 {

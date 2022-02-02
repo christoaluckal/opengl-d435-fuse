@@ -22,8 +22,8 @@ int main(){
     using std::chrono::duration;
     using std::chrono::milliseconds;
     Mat res;
-    Mat image1 = imread("image_1.png"); 
-    Mat image2 = imread("room.png"); 
+    Mat image1 = imread("images/image_1.png"); 
+    Mat image2 = imread("images/room.png"); 
     for(int i=0;i<1000;i++)
     {
         auto t1 = high_resolution_clock::now();

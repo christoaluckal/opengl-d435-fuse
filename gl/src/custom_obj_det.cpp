@@ -12,7 +12,7 @@
 #include <thread>
 #include <queue>
 #endif
-#include "common.hpp"
+#include "../helpers/common.hpp"
 using namespace cv;
 using namespace dnn;
 float confThreshold, nmsThreshold;

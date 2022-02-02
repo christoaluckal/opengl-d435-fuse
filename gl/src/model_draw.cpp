@@ -19,10 +19,10 @@ GLFWwindow* window;
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 
-#include "../common/shader.hpp"
-#include "../common/texture.hpp"
-#include "../common/controls.hpp"
-#include "../common/objloader.hpp"
+#include "../../common/shader.hpp"
+#include "../../common/texture.hpp"
+#include "../../common/controls.hpp"
+#include "../../common/objloader.hpp"
 
 int steps(const char *path)
 {
@@ -175,13 +175,13 @@ int steps(const char *path)
 		glRotatef(180.0, 1.0, 0.0, 0.0);
 		glReadPixels( 0, 0, 1024, 768, GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
 
-        int err = SOIL_save_image
-            (
-            "img.bmp",
-            SOIL_SAVE_TYPE_BMP,
-            1024, 768, 3,
-            &buf[0]
-            );
+        // int err = SOIL_save_image
+        //     (
+        //     "images/soil_img.bmp",
+        //     SOIL_SAVE_TYPE_BMP,
+        //     1024, 768, 3,
+        //     &buf[0]
+        //     );
 		glfwPollEvents();
 
 	do{
@@ -244,22 +244,23 @@ int steps(const char *path)
 
 		// Swap buffers
 		glfwSwapBuffers(window);
-		std::vector< unsigned char > buf( 1024 * 768 * 3 );
+		// std::vector< unsigned char > buf( 1024 * 768 * 3 );
 		glRotatef(180.0, 1.0, 0.0, 0.0);
 		glReadPixels( 0, 0, 1024, 768, GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
 
-        // int err = SOIL_save_image
-        //     (
-        //     "img.bmp",
-        //     SOIL_SAVE_TYPE_BMP,
-        //     1024, 768, 3,
-        //     &buf[0]
-        //     );
 		glfwPollEvents();
 
 	} // Check if the ESC key was pressed or the window was closed
 	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
 		   glfwWindowShouldClose(window) == 0 );
+	
+        int err = SOIL_save_image
+            (
+            "images/soil_img.bmp",
+            SOIL_SAVE_TYPE_BMP,
+            1024, 768, 3,
+            &buf[0]
+            );
 
 	// Cleanup VBO and shader
 	glDeleteBuffers(1, &vertexbuffer);
