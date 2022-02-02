@@ -25,8 +25,8 @@ int main(int argc, char * argv[]) try
         // Query the distance from the camera to the object in the center of the image
         dist_to_center = depth.get_distance(width / 2, height / 2);
         std::cout << dist_to_center << '\n';
-        if(dist_to_center)
-        break;
+        // if(dist_to_center)
+        // break;
 
         // Print the distance
     }
