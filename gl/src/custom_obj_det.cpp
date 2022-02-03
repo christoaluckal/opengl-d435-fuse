@@ -23,7 +23,7 @@ std::vector<int> postprocess(Mat& frame, const std::vector<Mat>& out, Net& net, 
 void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame);
 void callback(int pos, void* userdata);
 
-std::vector<int> getCoords(){
+std::vector<int> getCoords(Mat img_frame){
     confThreshold = 0.5;
     nmsThreshold = 0.4;
     float scale = 0.00392;
@@ -156,7 +156,8 @@ std::vector<int> getCoords(){
     // Process frames.
     Mat frame, blob;
     // GET FRAME HERE
-    frame = imread("test_chair.png");
+    // frame = imread("test_chair.png");
+    frame= img_frame;
     preprocess(frame, net, Size(inpWidth, inpHeight), scale, mean, swapRB);
     std::vector<Mat> outs;
     net.forward(outs, outNames);
@@ -251,7 +252,19 @@ int main(int argc, char** argv)
     // CV_Assert(parser.has("model"));
     // std::string modelPath = findFile(parser.get<String>("model"));
     // std::string configPath = findFile(parser.get<String>("config"));
-    getCoords();
+    Mat img1 = imread("/home/caluckal/Desktop/Github/opengl-d435-fuse-/gl/images/image_1.png");
+    std::vector<int> found_box = getCoords(img1);
+    if((found_box[0]+found_box[2])!=0)
+    {
+        for (int i=0;i<found_box.size();i++)
+    {
+        std::cout << found_box[i] << '\n';
+    }
+    }
+    else{
+        std::cout << "INVALID\n";
+    }
+    
 }
 inline void preprocess(const Mat& frame, Net& net, Size inpSize, float scale,
                        const Scalar& mean, bool swapRB)
@@ -388,12 +401,22 @@ std::vector<int> postprocess(Mat& frame, const std::vector<Mat>& outs, Net& net,
         //     std::cout << confidences[i] << '\n';
         // }
     }
-    Rect box = boxes[0];
     std::vector<int> box_val{};
-    box_val.push_back(box.x);
-    box_val.push_back(box.y);
-    box_val.push_back(box.x+box.width);
-    box_val.push_back(box.y+box.height);
+    if(boxes.size()!=0)
+    {
+        Rect box = boxes[0];
+        box_val.push_back(box.x);
+        box_val.push_back(box.y);
+        box_val.push_back(box.x+box.width);
+        box_val.push_back(box.y+box.height);
+    }
+    else{
+        box_val.push_back(0);
+        box_val.push_back(0);
+        box_val.push_back(0);
+        box_val.push_back(0);
+    }
+    
     return box_val;
     // drawPred(classIds[0], confidences[0], box.x, box.y,box.x + box.width, box.y + box.height, frame);
     // for (size_t idx = 0; idx < boxes.size(); ++idx)
@@ -404,23 +427,23 @@ std::vector<int> postprocess(Mat& frame, const std::vector<Mat>& outs, Net& net,
     //              box.x + box.width, box.y + box.height, frame);
     // }
 }
-void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame)
-{
-    rectangle(frame, Point(left, top), Point(right, bottom), Scalar(0, 255, 0));
-    std::string label = format("%.2f", conf);
-    if (!classes.empty())
-    {
-        // std::cout << classId << ' ' << (int)classes.size() << '\n'; 56 57
-        CV_Assert(classId < (int)classes.size());
-        label = classes[classId-1] + ": " + label;
-    }
-    int baseLine;
-    Size labelSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
-    top = max(top, labelSize.height);
-    rectangle(frame, Point(left, top - labelSize.height),
-              Point(left + labelSize.width, top + baseLine), Scalar::all(255), FILLED);
-    putText(frame, label, Point(left, top), FONT_HERSHEY_SIMPLEX, 0.5, Scalar());
-}
+// void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame)
+// {
+//     rectangle(frame, Point(left, top), Point(right, bottom), Scalar(0, 255, 0));
+//     std::string label = format("%.2f", conf);
+//     if (!classes.empty())
+//     {
+//         // std::cout << classId << ' ' << (int)classes.size() << '\n'; 56 57
+//         CV_Assert(classId < (int)classes.size());
+//         label = classes[classId-1] + ": " + label;
+//     }
+//     int baseLine;
+//     Size labelSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
+//     top = max(top, labelSize.height);
+//     rectangle(frame, Point(left, top - labelSize.height),
+//               Point(left + labelSize.width, top + baseLine), Scalar::all(255), FILLED);
+//     putText(frame, label, Point(left, top), FONT_HERSHEY_SIMPLEX, 0.5, Scalar());
+// }
 void callback(int pos, void*)
 {
     confThreshold = pos * 0.01f;

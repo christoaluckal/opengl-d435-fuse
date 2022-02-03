@@ -34,8 +34,21 @@ int main(int argc, char * argv[]) try
         auto pose_data = f.as<rs2::pose_frame>().get_pose_data();
 
         // Print the x, y, z values of the translation, relative to initial position
-        std::cout << "\r" << "Device Position: " << std::setprecision(3) << std::fixed << pose_data.translation.x << " " <<
-            pose_data.translation.y << " " << pose_data.translation.z << " (meters)";
+        // std::cout << "\r" << "Device Position: " << std::setprecision(3) << std::fixed << pose_data.translation.x << " " <<
+        //     pose_data.translation.y << " " << pose_data.translation.z << " (meters)";
+        // std::cout << "\r" << "Device Position: " << std::setprecision(4) << std::fixed << pose_data.rotation.x << " " <<
+        //     pose_data.rotation.y << " " << pose_data.rotation.z << " (meters)";
+
+        auto w = pose_data.rotation.w;
+        auto x = -pose_data.rotation.z;
+        auto y = pose_data.rotation.x;
+        auto z = -pose_data.rotation.y;
+
+        auto pitch =  -asin(2.0 * (x*z - w*y)) * 180.0 / M_PI;
+        auto roll  =  atan2(2.0 * (w*x + y*z), w*w - x*x - y*y + z*z) * 180.0 / M_PI;
+        auto yaw   =  atan2(2.0 * (w*z + x*y), w*w + x*x - y*y - z*z) * 180.0 / M_PI;
+
+        std::cout << " Pitch: " << pitch << " Roll: " << roll << " Yaw: " << yaw << '\n';
     }
 
     return EXIT_SUCCESS;
