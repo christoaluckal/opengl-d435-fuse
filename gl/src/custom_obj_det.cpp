@@ -252,7 +252,7 @@ int main(int argc, char** argv)
     // CV_Assert(parser.has("model"));
     // std::string modelPath = findFile(parser.get<String>("model"));
     // std::string configPath = findFile(parser.get<String>("config"));
-    Mat img1 = imread("/home/caluckal/Desktop/Github/opengl-d435-fuse-/gl/images/image_1.png");
+    Mat img1 = imread("images/test_chair.png");
     std::vector<int> found_box = getCoords(img1);
     if((found_box[0]+found_box[2])!=0)
     {
@@ -391,6 +391,8 @@ std::vector<int> postprocess(Mat& frame, const std::vector<Mat>& outs, Net& net,
                 nmsBoxes.push_back(localBoxes[idx]);
                 nmsConfidences.push_back(localConfidences[idx]);
                 nmsClassIds.push_back(it->first);
+
+                
             }
         }
         boxes = nmsBoxes;
