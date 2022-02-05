@@ -34,8 +34,12 @@ using namespace glm;
 
 #include <typeinfo>
 
+#include "./custom_obj_det.hpp"
+
 int actual(const char *path)
 {
+	float real_angle=0;
+	std::cin >> real_angle;
 	// Initialise GLFW
 	if( !glfwInit() )
 	{
@@ -51,7 +55,7 @@ int actual(const char *path)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( 1024, 768, "Tutorial 07 - Model Loading", NULL, NULL);
+	window = glfwCreateWindow( 640, 480, "Tutorial 07 - Model Loading", NULL, NULL);
 	if( window == NULL ){
 		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
 		getchar();
@@ -76,10 +80,10 @@ int actual(const char *path)
     
     // Set the mouse at the center of the screen
     glfwPollEvents();
-    glfwSetCursorPos(window, 1024/2, 768/2);
+    glfwSetCursorPos(window, 640/2, 480/2);
 
 	// Dark blue background
-	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	// Enable depth test
 	glEnable(GL_DEPTH_TEST);
@@ -122,10 +126,10 @@ int actual(const char *path)
 	glGenBuffers(1, &uvbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 	glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), &uvs[0], GL_STATIC_DRAW);
-	glm::mat4 ProjectionMatrix = getProjectionMatrix();
-	glm::mat4 ViewMatrix = getViewMatrix();
+	glm::mat4 ProjectionMatrix;
+	glm::mat4 ViewMatrix;
 	glm::mat4 ModelMatrix = glm::mat4(1.0);
-	std::vector< unsigned char > buf( 1024 * 768 * 3 );
+	std::vector< unsigned char > buf( 640 * 480 * 3 );
 
 
 	rs2::pose_frame pose_frame(nullptr);
@@ -140,7 +144,11 @@ int actual(const char *path)
     for (auto&& dev : ctx.query_devices())
         serials.push_back(dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER));
 
-
+	if(serials.size()==0)
+	{
+		std::cout << "No Device\n";
+		exit(0);
+	}
     // Start a streaming pipe per each connected device
     for (auto&& serial : serials)
     {
@@ -152,23 +160,31 @@ int actual(const char *path)
         // Map from each device's serial number to a different colorizer
         // colorizers[serial] = rs2::colorizer();
     }
-	
+	bool initial_test = true;
+	int frame_count = 0;
 	do{
+		buf.clear();
 		rs2::depth_frame depth_f(nullptr);
 		float yaw=0;
-		float posx,posz;
+		float pitch=0;
+		float posx,posz,posy;
+		std::vector<int> bbox;
+		cv::Mat image(cv::Size(640, 480), CV_8UC3, cv::Mat::AUTO_STEP);
+		cv::Mat image2;
 		for (auto &&pipe : pipelines) // loop over pipelines
         {
             // Wait for the next set of frames from the camera
             auto frames = pipe.wait_for_frames();
             auto color = frames.get_color_frame();
-            // if(flag==false)
-            // {
-            //     cv::Mat image(cv::Size(640, 480), CV_8UC3, (void*)color.get_data(), cv::Mat::AUTO_STEP);
-            //     cv::imwrite("test.png",image);
-            //     flag = true;
-            // }
-
+			if(color)
+			{
+				cv::Mat image(cv::Size(640, 480), CV_8UC3, (void*)color.get_data(), cv::Mat::AUTO_STEP);
+				// image = (void*)color.get_data();
+				image2=image;
+				cv::cvtColor(image2,image2,cv::COLOR_BGR2RGB);
+				// std::memcpy(image.data, (void*)color.get_data(),640*480*3);
+				bbox = customDetection(image);
+			}
             auto depth = frames.get_depth_frame();
             // pose
             auto pose = frames.get_pose_frame();
@@ -180,85 +196,128 @@ int actual(const char *path)
 				auto y = pose_data.rotation.x;
 				auto z = -pose_data.rotation.y;
 
-				// auto pitch =  -asin(2.0 * (x*z - w*y)) * 180.0 / M_PI;
+				auto pitch =  -asin(2.0 * (x*z - w*y)) * 180.0 / M_PI;
 				// auto roll  =  atan2(2.0 * (w*x + y*z), w*w - x*x - y*y + z*z) * 180.0 / M_PI;
 				yaw   =  atan2(2.0 * (w*z + x*y), w*w + x*x - y*y - z*z) * 180.0 / M_PI;
 				posx = pose_data.translation.x;
+				posy = pose_data.translation.y;
 				posz = pose_data.translation.z;
 				// std::cout << posx << ' ' << posz << '\n';
             }
-            if(depth)
+            if(depth&&initial_test)
             {
 				depth_f = depth.as<rs2::depth_frame>();
                 // std::cout << "DIST:" << depth.get_distance(640 / 2, 480 / 2) << '\n';
             }
 			// std::cout << "DIST:" << depth_f.get_distance(640 / 2, 480 / 2) << '\n';
         }
+
 		// // Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 		// Use our shader
 		glUseProgram(programID);
+		if(bbox[0]!=0&&bbox[2]!=0)
+		{
+			// for(int i=0;i<bbox.size();i++)
+			// {
+			// 	std::cout << bbox[i] << '\n';
+			// }
+			int x1,y1,x2,y2;
+			x1 = bbox[0];
+			y1 = bbox[1];
+			x2 = bbox[2];
+			y2 = bbox[3];
+			float loc_x,loc_z;
+			if(initial_test)
+			{
+				int sum_x = x1+x2;
+				int y_off = int(y1+0.55*(y2-y1));
+				loc_z = depth_f.get_distance(int(sum_x/2),int(y_off));
+				loc_x = loc_z*tan(yaw*M_PI/180+(86/2)*((sum_x/2-320)/320));
+				std::cout << loc_x << " " << posx+loc_x << " " << loc_z << " " << posz+loc_z << '\n';
+				ModelMatrix = glm::rotate(ModelMatrix,glm::radians(real_angle),glm::vec3(0.0, 1.0, 0.0));
+				ModelMatrix = glm::translate(ModelMatrix,glm::vec3(posx+loc_x, -1.0f, (posz+loc_z)));
+				ModelMatrix = glm::scale(ModelMatrix,glm::vec3(0.047f));
+				initial_test = false;
+			}
+			computeMatricesFromInputs_n(yaw,pitch,posx,posy,posz);
+			ProjectionMatrix = getProjectionMatrix();
+			ViewMatrix = getViewMatrix();
+			// glm::mat4 ModelMatrix = glm::mat4(1.0);
+			// ModelMatrix = glm::rotate(ModelMatrix,glm::radians(0.0f),glm::vec3(0.0, 1.0, 0.0));
+			// ModelMatrix = glm::translate(ModelMatrix,glm::vec3(0.0f, 0.0f, 0.0f));
+			// ModelMatrix = glm::scale(ModelMatrix,glm::vec3(scale));
+			glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
+			// std::cout << scale << '\n';
+			// Send our transformation to the currently bound shader, 
+			// in the "MVP" uniform
+			glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
+			// Bind our texture in Texture Unit 0
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, Texture);
+			// Set our "myTextureSampler" sampler to use Texture Unit 0
+			glUniform1i(TextureID, 0);
+
+			// 1rst attribute buffer : vertices
+			glEnableVertexAttribArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+			glVertexAttribPointer(
+				0,                  // attribute
+				3,                  // size
+				GL_FLOAT,           // type
+				GL_FALSE,           // normalized?
+				0,                  // stride
+				(void*)0            // array buffer offset
+			);
+
+			// 2nd attribute buffer : UVs
+			glEnableVertexAttribArray(1);
+			glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+			glVertexAttribPointer(
+				1,                                // attribute
+				2,                                // size
+				GL_FLOAT,                         // type
+				GL_FALSE,                         // normalized?
+				0,                                // stride
+				(void*)0                          // array buffer offset
+			);
+
+			// Draw the triangle !
+			glDrawArrays(GL_TRIANGLES, 0, vertices.size() );
+
+			glDisableVertexAttribArray(0);
+			glDisableVertexAttribArray(1);
+
+			// Swap buffers
+			glfwSwapBuffers(window);
+
+			glRotatef(0.0, 1.0, 0.0, 0.0);
+			glReadPixels( 0, 0, 640, 480, GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
+			cv::Mat gl_img(480, 640, CV_8UC3,&buf[0]);
+			cv::flip(gl_img,gl_img,0);
+
+			// for(int row=bbox[1];row<bbox[3];row++)
+			// {
+			// 	for(int col=bbox[0];col<bbox[2];col++)
+			// 	{
+			// 		image2.at<cv::Vec3b>(row,col)[0]=0;
+			// 		image2.at<cv::Vec3b>(row,col)[1]=0;
+			// 		image2.at<cv::Vec3b>(row,col)[2]=0;
+			// 	}
+			// }
+			cv::Mat res(cv::Size(640, 480), CV_8UC3);
+			std::string im_name,gl_name,res_name;
+			res_name = "res/file_"+std::to_string(frame_count)+".png";
+			im_name = "res/im_"+std::to_string(frame_count)+".png";
+			bitwise_or(gl_img,image2,res);
+			// cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
+			imwrite(res_name,res);
+			frame_count+=1;
+			glfwPollEvents();
+		}
+		
 		// Compute the MVP matrix from keyboard and mouse input
-		double scale = computeMatricesFromInputs_n(yaw,posx,posz);
-		glm::mat4 ProjectionMatrix = getProjectionMatrix();
-		glm::mat4 ViewMatrix = getViewMatrix();
-		// glm::mat4 ModelMatrix = glm::mat4(1.0);
-		ModelMatrix = glm::rotate(ModelMatrix,glm::radians(0.0f),glm::vec3(0.0, 1.0, 0.0));
-		ModelMatrix = glm::translate(ModelMatrix,glm::vec3(0.0f, 0.0f, 0.0f));
-		ModelMatrix = glm::scale(ModelMatrix,glm::vec3(scale));
-		glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
-		// std::cout << scale << '\n';
-		// Send our transformation to the currently bound shader, 
-		// in the "MVP" uniform
-		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-		// Bind our texture in Texture Unit 0
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, Texture);
-		// Set our "myTextureSampler" sampler to use Texture Unit 0
-		glUniform1i(TextureID, 0);
-
-		// 1rst attribute buffer : vertices
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-		glVertexAttribPointer(
-			0,                  // attribute
-			3,                  // size
-			GL_FLOAT,           // type
-			GL_FALSE,           // normalized?
-			0,                  // stride
-			(void*)0            // array buffer offset
-		);
-
-		// 2nd attribute buffer : UVs
-		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-		glVertexAttribPointer(
-			1,                                // attribute
-			2,                                // size
-			GL_FLOAT,                         // type
-			GL_FALSE,                         // normalized?
-			0,                                // stride
-			(void*)0                          // array buffer offset
-		);
-
-		// Draw the triangle !
-		glDrawArrays(GL_TRIANGLES, 0, vertices.size() );
-
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-
-		// Swap buffers
-		glfwSwapBuffers(window);
-
-		glRotatef(0.0, 1.0, 0.0, 0.0);
-		glReadPixels( 0, 0, 1024, 768, GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
-
-		glfwPollEvents();
-
-
 
 	} // Check if the ESC key was pressed or the window was closed
 	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
@@ -276,6 +335,8 @@ int actual(const char *path)
 
 	return 0;
 }
+// ffmpeg -framerate 10 -i res/file_%d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p output.mp4
+
 
 int nmd_steps(const char *path)
 {

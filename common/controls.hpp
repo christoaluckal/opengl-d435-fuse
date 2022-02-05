@@ -2,7 +2,7 @@
 #define CONTROLS_HPP
 
 double computeMatricesFromInputs();
-double computeMatricesFromInputs_n(float yaw,float posx,float posz);
+void computeMatricesFromInputs_n(float yaw,float pitch,float posx,float posy,float posz);
 glm::mat4 getViewMatrix();
 glm::mat4 getProjectionMatrix();
 

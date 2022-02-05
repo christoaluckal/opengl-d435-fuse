@@ -53,10 +53,10 @@ std::vector<int> getCoords(Mat img_frame){
     net.setPreferableTarget(0);
     std::vector<String> outNames = net.getUnconnectedOutLayersNames();
     // Create a window
-    static const std::string kWinName = "Deep learning object detection in OpenCV";
-    namedWindow(kWinName, WINDOW_NORMAL);
-    int initialConf = (int)(confThreshold * 100);
-    createTrackbar("Confidence threshold, %", kWinName, &initialConf, 99, callback);
+    // static const std::string kWinName = "Deep learning object detection in OpenCV";
+    // namedWindow(kWinName, WINDOW_NORMAL);
+    // int initialConf = (int)(confThreshold * 100);
+    // createTrackbar("Confidence threshold, %", kWinName, &initialConf, 99, callback);
     // Open a video file or an image file or a camera stream.
     // VideoCapture cap;
     // if (parser.has("input"))
@@ -228,7 +228,7 @@ private:
     std::mutex mutex;
 };
 #endif  // USE_THREADS
-int main(int argc, char** argv)
+std::vector<int> customDetection(Mat img1)
 {
     // CommandLineParser parser(argc, argv, keys);
     // const std::string modelName = parser.get<String>("@alias");
@@ -252,18 +252,19 @@ int main(int argc, char** argv)
     // CV_Assert(parser.has("model"));
     // std::string modelPath = findFile(parser.get<String>("model"));
     // std::string configPath = findFile(parser.get<String>("config"));
-    Mat img1 = imread("images/test_chair.png");
+    // Mat img1 = imread("images/test_chair.png");
     std::vector<int> found_box = getCoords(img1);
-    if((found_box[0]+found_box[2])!=0)
-    {
-        for (int i=0;i<found_box.size();i++)
-    {
-        std::cout << found_box[i] << '\n';
-    }
-    }
-    else{
-        std::cout << "INVALID\n";
-    }
+    // if((found_box[0]+found_box[2])!=0)
+    // {
+    //     for (int i=0;i<found_box.size();i++)
+    // {
+    //     std::cout << found_box[i] << '\n';
+    // }
+    // }
+    // else{
+    //     std::cout << "INVALID\n";
+    // }
+    return found_box;
     
 }
 inline void preprocess(const Mat& frame, Net& net, Size inpSize, float scale,

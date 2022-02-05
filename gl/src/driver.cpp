@@ -10,7 +10,7 @@ int main(int argc, char **argv){
     // Blacken the RGB where chair is
     // Calculate location of chair in room
     // drawObj("Chair.obj");
-    actual("objs/cube.obj");
+    actual("objs/Chair.obj");
     // drawObj(path);
     // std::vector< unsigned char > buffer = drawObj_s("cube.obj");
     // cv::Mat img(768, 1024, CV_8UC3,&buffer[0]);

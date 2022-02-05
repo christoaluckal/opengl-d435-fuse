@@ -34,27 +34,32 @@ float mouseSpeed = 0.005f;
 double scale_fn = 1;
 
 float delta_x = 0;
+float delta_y = 0;
 float delta_z = 0;
 float delta_yaw = 0;
+float delta_pitch = 0;
 
-double computeMatricesFromInputs_n(float yaw,float posx,float posz){
+void computeMatricesFromInputs_n(float yaw,float pitch,float posx,float posy,float posz){
 	// Compute new orientation
 	// horizontalAngle += mouseSpeed * float(1024/2 - posx );
 	// verticalAngle   += mouseSpeed * float( 768/2 - posz );
 
 	// std::cout << horizontalAngle << " " << verticalAngle << '\n';
 	posx = ceil(posx*1000)/1000;
+	posy = ceil(posy*1000)/1000;
 	posz = ceil(posz*1000)/1000;
 	delta_x = -posx;
 	delta_z = -posz;
+	delta_y = -posy;
 	delta_yaw = -(yaw*M_PI/180);
-	std::cout << "YAW:" << delta_yaw << " X:" << delta_x << " Z:" << delta_z << '\n';
-	glm::vec3 move = glm::vec3( delta_x, 0, delta_z ); 
+	delta_pitch = (pitch*M_PI/180);
+	// std::cout << "YAW:" << delta_yaw << " X:" << delta_x << " Z:" << delta_z << '\n';
+	glm::vec3 move = glm::vec3( delta_x, posy, delta_z ); 
 	// Direction : Spherical coordinates to Cartesian coordinates conversion
 	glm::vec3 direction(
-		cos(verticalAngle) * sin(delta_yaw), 
-		sin(verticalAngle),
-		cos(verticalAngle) * cos(delta_yaw)
+		cos(delta_pitch) * sin(delta_yaw), 
+		sin(delta_pitch),
+		cos(delta_pitch) * cos(delta_yaw)
 	);
 	
 	// Right vector
@@ -67,7 +72,7 @@ double computeMatricesFromInputs_n(float yaw,float posx,float posz){
 	// Up vector
 	glm::vec3 up = glm::cross( right, direction );
 
-	position= move*10.0f;
+	position= move;
 	// position = position*right*10.0f;
 	float FoV = initialFoV;// - 5 * glfwGetMouseWheel(); // Now GLFW 3 requires setting up a callback for this. It's a bit too complicated for this beginner's tutorial, so it's disabled instead.
 
@@ -81,7 +86,6 @@ double computeMatricesFromInputs_n(float yaw,float posx,float posz){
 						   );
 
 	// For the next frame, the "last time" will be "now"
-	return scale_fn;
 }
 
 double computeMatricesFromInputs(){
