@@ -1,0 +1,3 @@
+[submodule "gl/detection/darknet"]
+	path = gl/detection/darknet
+	url = https://github.com/cvjena/darknet
