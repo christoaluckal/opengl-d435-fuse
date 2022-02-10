@@ -13,174 +13,58 @@
 #include <queue>
 #endif
 #include "../helpers/common.hpp"
+#include "custom_obj_det.hpp"
 using namespace cv;
 using namespace dnn;
 float confThreshold, nmsThreshold;
-std::vector<std::string> classes;
+// std::vector<std::string> classes;
 inline void preprocess(const Mat& frame, Net& net, Size inpSize, float scale,
                        const Scalar& mean, bool swapRB);
 std::vector<int> postprocess(Mat& frame, const std::vector<Mat>& out, Net& net, int backend);
 void drawPred(int classId, float conf, int left, int top, int right, int bottom, Mat& frame);
 void callback(int pos, void* userdata);
 
-std::vector<int> getCoords(Mat img_frame){
-    confThreshold = 0.5;
-    nmsThreshold = 0.4;
-    float scale = 0.00392;
-    Scalar mean = Scalar(0,0,0,0);
-    bool swapRB = true;
-    int inpWidth = 640;
-    int inpHeight = 480;
-    size_t asyncNumReq = 0;
-    // CV_Assert(parser.has("model"));
-    std::string modelPath = "detection/yolov3.weights";
-    std::string configPath = "detection/darknet/cfg/yolov3.cfg";
-    // Open file with classes names.
-    std::string file = "object_detection_classes_pascal_voc.txt";
-    std::ifstream ifs(file.c_str());
-    if (!ifs.is_open())
-        CV_Error(Error::StsError, "File " + file + " not found");
-    std::string line;
-    while (std::getline(ifs, line))
-    {
-        classes.push_back(line);
-    }
 
-    // Load a model.
-    Net net = readNet(modelPath, configPath,"");
-    int backend = 0;
-    net.setPreferableBackend(backend);
-    net.setPreferableTarget(0);
-    std::vector<String> outNames = net.getUnconnectedOutLayersNames();
-    // Create a window
-    // static const std::string kWinName = "Deep learning object detection in OpenCV";
-    // namedWindow(kWinName, WINDOW_NORMAL);
-    // int initialConf = (int)(confThreshold * 100);
-    // createTrackbar("Confidence threshold, %", kWinName, &initialConf, 99, callback);
-    // Open a video file or an image file or a camera stream.
-    // VideoCapture cap;
-    // if (parser.has("input"))
-    //     cap.open(parser.get<String>("input"));
-    // else
-    //     cap.open(parser.get<int>("device"));
-// #ifdef USE_THREADS
-//     bool process = true;
-//     // Frames capturing thread
-//     QueueFPS<Mat> framesQueue;
-//     std::thread framesThread([&](){
-//         Mat frame;
-//         while (process)
-//         {
-//             cap >> frame;
-//             if (!frame.empty())
-//                 framesQueue.push(frame.clone());
-//             else
-//                 break;
-//         }
-//     });
-//     // Frames processing thread
-//     QueueFPS<Mat> processedFramesQueue;
-//     QueueFPS<std::vector<Mat> > predictionsQueue;
-//     std::thread processingThread([&](){
-//         std::queue<AsyncArray> futureOutputs;
-//         Mat blob;
-//         while (process)
-//         {
-//             // Get a next frame
-//             Mat frame;
-//             {
-//                 if (!framesQueue.empty())
-//                 {
-//                     frame = framesQueue.get();
-//                     if (asyncNumReq)
-//                     {
-//                         if (futureOutputs.size() == asyncNumReq)
-//                             frame = Mat();
-//                     }
-//                     else
-//                         framesQueue.clear();  // Skip the rest of frames
-//                 }
-//             }
-//             // Process the frame
-//             if (!frame.empty())
-//             {
-//                 preprocess(frame, net, Size(inpWidth, inpHeight), scale, mean, swapRB);
-//                 processedFramesQueue.push(frame);
-//                 if (asyncNumReq)
-//                 {
-//                     futureOutputs.push(net.forwardAsync());
-//                 }
-//                 else
-//                 {
-//                     std::vector<Mat> outs;
-//                     net.forward(outs, outNames);
-//                     predictionsQueue.push(outs);
-//                 }
-//             }
-//             while (!futureOutputs.empty() &&
-//                    futureOutputs.front().wait_for(std::chrono::seconds(0)))
-//             {
-//                 AsyncArray async_out = futureOutputs.front();
-//                 futureOutputs.pop();
-//                 Mat out;
-//                 async_out.get(out);
-//                 predictionsQueue.push({out});
-//             }
-//         }
-//     });
-//     // Postprocessing and rendering loop
-//     while (waitKey(1) < 0)
+// YoloNet createNet(){
+//     confThreshold = 0.5;
+//     nmsThreshold = 0.4;
+//     float scale = 0.00392;
+//     Scalar mean = Scalar(0,0,0,0);
+//     bool swapRB = true;
+//     int inpWidth = 640;
+//     int inpHeight = 480;
+//     size_t asyncNumReq = 0;
+//     // CV_Assert(parser.has("model"));
+//     std::string modelPath = "detection/yolov3.weights";
+//     std::string configPath = "detection/darknet/cfg/yolov3.cfg";
+//     // Open file with classes names.
+//     std::string file = "object_detection_classes_pascal_voc.txt";
+//     YoloNet net_class = YoloNet(confThreshold,nmsThreshold,scale,mean,swapRB,inpWidth,inpHeight,asyncNumReq,modelPath,configPath,file);
+//     std::ifstream ifs(net_class.file.c_str());
+//     if (!ifs.is_open())
+//         CV_Error(Error::StsError, "File " + file + " not found");
+//     std::string line;
+//     while (std::getline(ifs, line))
 //     {
-//         if (predictionsQueue.empty())
-//             continue;
-//         std::vector<Mat> outs = predictionsQueue.get();
-//         Mat frame = processedFramesQueue.get();
-//         postprocess(frame, outs, net, backend);
-//         if (predictionsQueue.counter > 1)
-//         {
-//             std::string label = format("Camera: %.2f FPS", framesQueue.getFPS());
-//             putText(frame, label, Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-//             label = format("Network: %.2f FPS", predictionsQueue.getFPS());
-//             putText(frame, label, Point(0, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-//             label = format("Skipped frames: %d", framesQueue.counter - predictionsQueue.counter);
-//             putText(frame, label, Point(0, 45), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-//         }
-//         imshow(kWinName, frame);
+//         classes.push_back(line);
 //     }
-//     process = false;
-//     framesThread.join();
-//     processingThread.join();
-// USE_THREADS
-    if (asyncNumReq)
-        CV_Error(Error::StsNotImplemented, "Asynchronous forward is supported only with Inference Engine backend.");
+
+//     // Load a model.
+    
+//     return net_class;
+// }
+
+std::vector<int> getCoords(Mat img_frame,CustomYoloNet net_var){
     // Process frames.
-    Mat frame, blob;
+    Mat coord_frame,blob;
     // GET FRAME HERE
     // frame = imread("test_chair.png");
-    frame= img_frame;
-    preprocess(frame, net, Size(inpWidth, inpHeight), scale, mean, swapRB);
+    // YoloNet net_c = createNet();
+    coord_frame = img_frame;
+    preprocess(coord_frame, net_var.net, Size(net_var.inpWidth, net_var.inpHeight), net_var.scale, net_var.mean, net_var.swapRB);
     std::vector<Mat> outs;
-    net.forward(outs, outNames);
-    std::vector<int> box_coord = postprocess(frame, outs, net, backend);
-    // Put efficiency information.
-    // std::vector<double> layersTimes;
-    // double freq = getTickFrequency() / 1000;
-    // double t = net.getPerfProfile(layersTimes) / freq;
-    // std::string label = format("Inference time: %.2f ms", t);
-    // putText(frame, label, Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-    // std::cout << box_coord[0] << ' ' << box_coord[1] << ' ' << box_coord[2] << ' ' << box_coord[3] << '\n';
-    // while (waitKey(1) < 0)
-    // {
-    //     // cap >> frame;
-    //     if (frame.empty())
-    //     {
-    //         waitKey();
-    //         break;
-    //     }
-
-    //     imshow(kWinName, frame);
-    // }
- // USE_THREADS
+    net_var.net.forward(outs, net_var.outNames);
+    std::vector<int> box_coord = postprocess(coord_frame, outs, net_var.net, 0);
     return box_coord;
 };
 
@@ -228,45 +112,45 @@ private:
     std::mutex mutex;
 };
 #endif  // USE_THREADS
-std::vector<int> customDetection(Mat img1)
-{
-    // CommandLineParser parser(argc, argv, keys);
-    // const std::string modelName = parser.get<String>("@alias");
-    // const std::string zooFile = parser.get<String>("zoo");
-    // keys += genPreprocArguments(modelName, zooFile);
-    // parser = CommandLineParser(argc, argv, keys);
-    // parser.about("Use this script to run object detection deep learning networks using OpenCV.");
-    // if (argc == 1 || parser.has("help"))
-    // {
-    //     parser.printMessage();
-    //     return 0;
-    // }
-    // confThreshold = parser.get<float>("thr");
-    // nmsThreshold = parser.get<float>("nms");
-    // float scale = parser.get<float>("scale");
-    // Scalar mean = parser.get<Scalar>("mean");
-    // bool swapRB = parser.get<bool>("rgb");
-    // int inpWidth = parser.get<int>("width");
-    // int inpHeight = parser.get<int>("height");
-    // size_t asyncNumReq = parser.get<int>("async");
-    // CV_Assert(parser.has("model"));
-    // std::string modelPath = findFile(parser.get<String>("model"));
-    // std::string configPath = findFile(parser.get<String>("config"));
-    // Mat img1 = imread("images/test_chair.png");
-    std::vector<int> found_box = getCoords(img1);
-    // if((found_box[0]+found_box[2])!=0)
-    // {
-    //     for (int i=0;i<found_box.size();i++)
-    // {
-    //     std::cout << found_box[i] << '\n';
-    // }
-    // }
-    // else{
-    //     std::cout << "INVALID\n";
-    // }
-    return found_box;
+// std::vector<int> customDetection(Mat img1,YoloNet net_var)
+// {
+//     // CommandLineParser parser(argc, argv, keys);
+//     // const std::string modelName = parser.get<String>("@alias");
+//     // const std::string zooFile = parser.get<String>("zoo");
+//     // keys += genPreprocArguments(modelName, zooFile);
+//     // parser = CommandLineParser(argc, argv, keys);
+//     // parser.about("Use this script to run object detection deep learning networks using OpenCV.");
+//     // if (argc == 1 || parser.has("help"))
+//     // {
+//     //     parser.printMessage();
+//     //     return 0;
+//     // }
+//     // confThreshold = parser.get<float>("thr");
+//     // nmsThreshold = parser.get<float>("nms");
+//     // float scale = parser.get<float>("scale");
+//     // Scalar mean = parser.get<Scalar>("mean");
+//     // bool swapRB = parser.get<bool>("rgb");
+//     // int inpWidth = parser.get<int>("width");
+//     // int inpHeight = parser.get<int>("height");
+//     // size_t asyncNumReq = parser.get<int>("async");
+//     // CV_Assert(parser.has("model"));
+//     // std::string modelPath = findFile(parser.get<String>("model"));
+//     // std::string configPath = findFile(parser.get<String>("config"));
+//     // Mat img1 = imread("images/test_chair.png");
+//     std::vector<int> found_box = getCoords(img1,net_var);
+//     // if((found_box[0]+found_box[2])!=0)
+//     // {
+//     //     for (int i=0;i<found_box.size();i++)
+//     // {
+//     //     std::cout << found_box[i] << '\n';
+//     // }
+//     // }
+//     // else{
+//     //     std::cout << "INVALID\n";
+//     // }
+//     return found_box;
     
-}
+// }
 inline void preprocess(const Mat& frame, Net& net, Size inpSize, float scale,
                        const Scalar& mean, bool swapRB)
 {

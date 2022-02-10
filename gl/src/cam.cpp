@@ -74,13 +74,13 @@ int getVid(){
 
 int main(int, char**)
 {
-    while(1)
-    {
-        Mat frame_n = getImg();
-        imshow("t",frame_n);
-        waitKey(0);
-    }
+    // while(1)
+    // {
+    //     Mat frame_n = getImg();
+    //     imshow("t",frame_n);
+    //     waitKey(0);
+    // }
     
 
-    // getVid();
+    getVid();
 }

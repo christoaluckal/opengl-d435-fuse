@@ -44,12 +44,53 @@ std::string get_time(std::chrono::_V2::steady_clock::time_point time2,std::chron
 	std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(time2 - time1);
 	return std::to_string(time_span.count());
 }
+std::vector<std::string> classes;
+
+CustomYoloNet createNet(){
+    float confThreshold = 0.5;
+    float nmsThreshold = 0.4;
+    float scale = 0.00392;
+    Scalar mean = Scalar(0,0,0,0);
+    bool swapRB = true;
+    int inpWidth = 640;
+    int inpHeight = 480;
+    size_t asyncNumReq = 0;
+    // CV_Assert(parser.has("model"));
+    std::string modelPath = "detection/yolov3.weights";
+    std::string configPath = "detection/darknet/cfg/yolov3.cfg";
+    // Open file with classes names.
+    std::string file = "object_detection_classes_pascal_voc.txt";
+    CustomYoloNet net_class = CustomYoloNet(confThreshold,nmsThreshold,scale,mean,swapRB,inpWidth,inpHeight,asyncNumReq,modelPath,configPath,file);
+    std::ifstream ifs(net_class.file.c_str());
+    if (!ifs.is_open())
+        CV_Error(Error::StsError, "File " + file + " not found");
+    std::string line;
+    while (std::getline(ifs, line))
+    {
+        classes.push_back(line);
+    }
+    return net_class;
+}
+
+int init_x=0;
+int init_y=0;
+
+void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+{
+    if  ( event == EVENT_LBUTTONDOWN )
+    {
+		std::cout << "CLICKED ON" << x << y <<'\n';
+        init_x=x;
+		init_y=y;
+    }   
+}
 
 int actual(const char *path)
 {
 	float real_angle=0;
 	std::cin >> real_angle;
 	// Initialise GLFW
+	CustomYoloNet loop_net = createNet();
 	if( !glfwInit() )
 	{
 		fprintf( stderr, "Failed to initialize GLFW\n" );
@@ -85,7 +126,7 @@ int actual(const char *path)
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     // Hide the mouse and enable unlimited mouvement
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
     // Set the mouse at the center of the screen
     glfwPollEvents();
@@ -176,14 +217,13 @@ int actual(const char *path)
 	auto curr = clock_func::now();
 	auto start = clock_func::now();
 	do{
-		start = clock_func::now();
+		// start = clock_func::now();
 		buf.clear();
 		rs2::depth_frame depth_f(nullptr);
 		float yaw=0;
 		float pitch=0;
 		float posx,posz,posy;
 		std::vector<int> bbox;
-		cv::Mat image(cv::Size(640, 480), CV_8UC3, cv::Mat::AUTO_STEP);
 		cv::Mat image2;
 		for (auto &&pipe : pipelines) // loop over pipelines
         {
@@ -195,12 +235,12 @@ int actual(const char *path)
 				cv::Mat image(cv::Size(640, 480), CV_8UC3, (void*)color.get_data(), cv::Mat::AUTO_STEP);
 				// image = (void*)color.get_data();
 				image2=image;
-				cv::cvtColor(image2,image2,cv::COLOR_BGR2RGB);
+				// cv::cvtColor(image2,image2,cv::COLOR_BGR2RGB);
 				// std::memcpy(image.data, (void*)color.get_data(),640*480*3);
-				start = std::chrono::steady_clock::now();
-				bbox = customDetection(image2);
-				curr = std::chrono::steady_clock::now();
-				std::cout << "DETECTION:" << get_time(curr,start) << '\n';
+				// start = std::chrono::steady_clock::now();
+				bbox = getCoords(image2,loop_net);
+				// curr = std::chrono::steady_clock::now();
+				// std::cout << "DETECTION:" << get_time(curr,start) << '\n';
 				auto depth = frames.get_depth_frame();
 				if(depth&&initial_test)
 				{
@@ -231,8 +271,8 @@ int actual(const char *path)
 
 			// std::cout << "DIST:" << depth_f.get_distance(640 / 2, 480 / 2) << '\n';
         }
-		curr = clock_func::now();
-		std::cout << "REALSENSE LOOP:" << get_time(curr,start) << '\n';
+		// curr = clock_func::now();
+		// std::cout << "REALSENSE LOOP:" << get_time(curr,start) << '\n';
 		// // Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Use our shader
@@ -247,6 +287,12 @@ int actual(const char *path)
 			float loc_x,loc_z;
 			if(initial_test)
 			{
+				// setMouseCallback("ImageDisplay", CallBackFunc, NULL);
+				// imshow("ImageDisplay",image2);
+				// waitKey(2000);
+				// loc_z = depth_f.get_distance(init_x,init_y);
+				// loc_x = loc_z*tan(yaw*M_PI/180+(86/2)*((init_x-320)/320));
+
 				int sum_x = x1+x2;
 				int y_off = int(y1+0.55*(y2-y1));
 				loc_z = depth_f.get_distance(int(sum_x/2),int(y_off));
@@ -323,16 +369,18 @@ int actual(const char *path)
 			// 		image2.at<cv::Vec3b>(row,col)[2]=0;
 			// 	}
 			// }
-			image_pairs.push_back(std::make_pair(image2,gl_img));
 
-			// cv::Mat res(cv::Size(640, 480), CV_8UC3);
-			// std::string im_name,gl_name,res_name;
-			// res_name = "res/file_"+std::to_string(frame_count)+".png";
-			// im_name = "res/im_"+std::to_string(frame_count)+".png";
-			// cv::bitwise_or(gl_img,image2,res);
-			// // cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
-			// cv::imwrite(res_name,res);
-			// frame_count+=1;
+
+			// image_pairs.push_back(std::make_pair(image2,gl_img));
+
+			cv::Mat res(cv::Size(640, 480), CV_8UC3);
+			std::string im_name,gl_name,res_name;
+			res_name = "res/file_"+std::to_string(frame_count)+".png";
+			im_name = "res/im_"+std::to_string(frame_count)+".png";
+			cv::bitwise_or(gl_img,image2,res);
+			// cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
+			cv::imwrite(res_name,res);
+			frame_count+=1;
 			glfwPollEvents();
 		}
 		
@@ -347,7 +395,7 @@ int actual(const char *path)
 	// {
 	// 	cv::Mat res(cv::Size(640, 480), CV_8UC3);
 	// 	cv::bitwise_or(image_pairs[p].first,image_pairs[p].second,res);
-	// 	cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
+	// 	// cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
 	// 	cv::imwrite("res/file_"+std::to_string(p)+".png",res);
 
 	// }
