@@ -63,94 +63,94 @@ std::vector<int> getCoords(Mat img_frame){
     //     cap.open(parser.get<String>("input"));
     // else
     //     cap.open(parser.get<int>("device"));
-#ifdef USE_THREADS
-    bool process = true;
-    // Frames capturing thread
-    QueueFPS<Mat> framesQueue;
-    std::thread framesThread([&](){
-        Mat frame;
-        while (process)
-        {
-            cap >> frame;
-            if (!frame.empty())
-                framesQueue.push(frame.clone());
-            else
-                break;
-        }
-    });
-    // Frames processing thread
-    QueueFPS<Mat> processedFramesQueue;
-    QueueFPS<std::vector<Mat> > predictionsQueue;
-    std::thread processingThread([&](){
-        std::queue<AsyncArray> futureOutputs;
-        Mat blob;
-        while (process)
-        {
-            // Get a next frame
-            Mat frame;
-            {
-                if (!framesQueue.empty())
-                {
-                    frame = framesQueue.get();
-                    if (asyncNumReq)
-                    {
-                        if (futureOutputs.size() == asyncNumReq)
-                            frame = Mat();
-                    }
-                    else
-                        framesQueue.clear();  // Skip the rest of frames
-                }
-            }
-            // Process the frame
-            if (!frame.empty())
-            {
-                preprocess(frame, net, Size(inpWidth, inpHeight), scale, mean, swapRB);
-                processedFramesQueue.push(frame);
-                if (asyncNumReq)
-                {
-                    futureOutputs.push(net.forwardAsync());
-                }
-                else
-                {
-                    std::vector<Mat> outs;
-                    net.forward(outs, outNames);
-                    predictionsQueue.push(outs);
-                }
-            }
-            while (!futureOutputs.empty() &&
-                   futureOutputs.front().wait_for(std::chrono::seconds(0)))
-            {
-                AsyncArray async_out = futureOutputs.front();
-                futureOutputs.pop();
-                Mat out;
-                async_out.get(out);
-                predictionsQueue.push({out});
-            }
-        }
-    });
-    // Postprocessing and rendering loop
-    while (waitKey(1) < 0)
-    {
-        if (predictionsQueue.empty())
-            continue;
-        std::vector<Mat> outs = predictionsQueue.get();
-        Mat frame = processedFramesQueue.get();
-        postprocess(frame, outs, net, backend);
-        if (predictionsQueue.counter > 1)
-        {
-            std::string label = format("Camera: %.2f FPS", framesQueue.getFPS());
-            putText(frame, label, Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-            label = format("Network: %.2f FPS", predictionsQueue.getFPS());
-            putText(frame, label, Point(0, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-            label = format("Skipped frames: %d", framesQueue.counter - predictionsQueue.counter);
-            putText(frame, label, Point(0, 45), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
-        }
-        imshow(kWinName, frame);
-    }
-    process = false;
-    framesThread.join();
-    processingThread.join();
-#else  // USE_THREADS
+// #ifdef USE_THREADS
+//     bool process = true;
+//     // Frames capturing thread
+//     QueueFPS<Mat> framesQueue;
+//     std::thread framesThread([&](){
+//         Mat frame;
+//         while (process)
+//         {
+//             cap >> frame;
+//             if (!frame.empty())
+//                 framesQueue.push(frame.clone());
+//             else
+//                 break;
+//         }
+//     });
+//     // Frames processing thread
+//     QueueFPS<Mat> processedFramesQueue;
+//     QueueFPS<std::vector<Mat> > predictionsQueue;
+//     std::thread processingThread([&](){
+//         std::queue<AsyncArray> futureOutputs;
+//         Mat blob;
+//         while (process)
+//         {
+//             // Get a next frame
+//             Mat frame;
+//             {
+//                 if (!framesQueue.empty())
+//                 {
+//                     frame = framesQueue.get();
+//                     if (asyncNumReq)
+//                     {
+//                         if (futureOutputs.size() == asyncNumReq)
+//                             frame = Mat();
+//                     }
+//                     else
+//                         framesQueue.clear();  // Skip the rest of frames
+//                 }
+//             }
+//             // Process the frame
+//             if (!frame.empty())
+//             {
+//                 preprocess(frame, net, Size(inpWidth, inpHeight), scale, mean, swapRB);
+//                 processedFramesQueue.push(frame);
+//                 if (asyncNumReq)
+//                 {
+//                     futureOutputs.push(net.forwardAsync());
+//                 }
+//                 else
+//                 {
+//                     std::vector<Mat> outs;
+//                     net.forward(outs, outNames);
+//                     predictionsQueue.push(outs);
+//                 }
+//             }
+//             while (!futureOutputs.empty() &&
+//                    futureOutputs.front().wait_for(std::chrono::seconds(0)))
+//             {
+//                 AsyncArray async_out = futureOutputs.front();
+//                 futureOutputs.pop();
+//                 Mat out;
+//                 async_out.get(out);
+//                 predictionsQueue.push({out});
+//             }
+//         }
+//     });
+//     // Postprocessing and rendering loop
+//     while (waitKey(1) < 0)
+//     {
+//         if (predictionsQueue.empty())
+//             continue;
+//         std::vector<Mat> outs = predictionsQueue.get();
+//         Mat frame = processedFramesQueue.get();
+//         postprocess(frame, outs, net, backend);
+//         if (predictionsQueue.counter > 1)
+//         {
+//             std::string label = format("Camera: %.2f FPS", framesQueue.getFPS());
+//             putText(frame, label, Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
+//             label = format("Network: %.2f FPS", predictionsQueue.getFPS());
+//             putText(frame, label, Point(0, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
+//             label = format("Skipped frames: %d", framesQueue.counter - predictionsQueue.counter);
+//             putText(frame, label, Point(0, 45), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0));
+//         }
+//         imshow(kWinName, frame);
+//     }
+//     process = false;
+//     framesThread.join();
+//     processingThread.join();
+// USE_THREADS
     if (asyncNumReq)
         CV_Error(Error::StsNotImplemented, "Asynchronous forward is supported only with Inference Engine backend.");
     // Process frames.
@@ -180,7 +180,7 @@ std::vector<int> getCoords(Mat img_frame){
 
     //     imshow(kWinName, frame);
     // }
-#endif  // USE_THREADS
+ // USE_THREADS
     return box_coord;
 };
 

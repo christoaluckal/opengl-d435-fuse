@@ -35,6 +35,15 @@ using namespace glm;
 #include <typeinfo>
 
 #include "./custom_obj_det.hpp"
+#include <chrono>
+
+using clock_func = std::chrono::steady_clock;
+
+std::string get_time(std::chrono::_V2::steady_clock::time_point time2,std::chrono::_V2::steady_clock::time_point time1)
+{
+	std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(time2 - time1);
+	return std::to_string(time_span.count());
+}
 
 int actual(const char *path)
 {
@@ -162,7 +171,12 @@ int actual(const char *path)
     }
 	bool initial_test = true;
 	int frame_count = 0;
+	std::vector<std::pair<cv::Mat,cv::Mat>> image_pairs;
+
+	auto curr = clock_func::now();
+	auto start = clock_func::now();
 	do{
+		start = clock_func::now();
 		buf.clear();
 		rs2::depth_frame depth_f(nullptr);
 		float yaw=0;
@@ -183,9 +197,19 @@ int actual(const char *path)
 				image2=image;
 				cv::cvtColor(image2,image2,cv::COLOR_BGR2RGB);
 				// std::memcpy(image.data, (void*)color.get_data(),640*480*3);
-				bbox = customDetection(image);
+				start = std::chrono::steady_clock::now();
+				bbox = customDetection(image2);
+				curr = std::chrono::steady_clock::now();
+				std::cout << "DETECTION:" << get_time(curr,start) << '\n';
+				auto depth = frames.get_depth_frame();
+				if(depth&&initial_test)
+				{
+					depth_f = depth.as<rs2::depth_frame>();
+					// std::cout << "DIST:" << depth.get_distance(640 / 2, 480 / 2) << '\n';
+				}
+				continue;
 			}
-            auto depth = frames.get_depth_frame();
+            
             // pose
             auto pose = frames.get_pose_frame();
             if (pose) {
@@ -204,24 +228,17 @@ int actual(const char *path)
 				posz = pose_data.translation.z;
 				// std::cout << posx << ' ' << posz << '\n';
             }
-            if(depth&&initial_test)
-            {
-				depth_f = depth.as<rs2::depth_frame>();
-                // std::cout << "DIST:" << depth.get_distance(640 / 2, 480 / 2) << '\n';
-            }
+
 			// std::cout << "DIST:" << depth_f.get_distance(640 / 2, 480 / 2) << '\n';
         }
-
+		curr = clock_func::now();
+		std::cout << "REALSENSE LOOP:" << get_time(curr,start) << '\n';
 		// // Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Use our shader
 		glUseProgram(programID);
 		if(bbox[0]!=0&&bbox[2]!=0)
 		{
-			// for(int i=0;i<bbox.size();i++)
-			// {
-			// 	std::cout << bbox[i] << '\n';
-			// }
 			int x1,y1,x2,y2;
 			x1 = bbox[0];
 			y1 = bbox[1];
@@ -292,7 +309,7 @@ int actual(const char *path)
 			// Swap buffers
 			glfwSwapBuffers(window);
 
-			glRotatef(0.0, 1.0, 0.0, 0.0);
+			// glRotatef(0.0, 1.0, 0.0, 0.0);
 			glReadPixels( 0, 0, 640, 480, GL_RGB, GL_UNSIGNED_BYTE, &buf[0]);
 			cv::Mat gl_img(480, 640, CV_8UC3,&buf[0]);
 			cv::flip(gl_img,gl_img,0);
@@ -306,14 +323,16 @@ int actual(const char *path)
 			// 		image2.at<cv::Vec3b>(row,col)[2]=0;
 			// 	}
 			// }
-			cv::Mat res(cv::Size(640, 480), CV_8UC3);
-			std::string im_name,gl_name,res_name;
-			res_name = "res/file_"+std::to_string(frame_count)+".png";
-			im_name = "res/im_"+std::to_string(frame_count)+".png";
-			bitwise_or(gl_img,image2,res);
-			// cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
-			imwrite(res_name,res);
-			frame_count+=1;
+			image_pairs.push_back(std::make_pair(image2,gl_img));
+
+			// cv::Mat res(cv::Size(640, 480), CV_8UC3);
+			// std::string im_name,gl_name,res_name;
+			// res_name = "res/file_"+std::to_string(frame_count)+".png";
+			// im_name = "res/im_"+std::to_string(frame_count)+".png";
+			// cv::bitwise_or(gl_img,image2,res);
+			// // cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
+			// cv::imwrite(res_name,res);
+			// frame_count+=1;
 			glfwPollEvents();
 		}
 		
@@ -322,6 +341,16 @@ int actual(const char *path)
 	} // Check if the ESC key was pressed or the window was closed
 	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
 		   glfwWindowShouldClose(window) == 0 );
+
+	// std::cout << "SAVING IMAGES\n";
+	// for(int p=0;p<image_pairs.size();p++)
+	// {
+	// 	cv::Mat res(cv::Size(640, 480), CV_8UC3);
+	// 	cv::bitwise_or(image_pairs[p].first,image_pairs[p].second,res);
+	// 	cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
+	// 	cv::imwrite("res/file_"+std::to_string(p)+".png",res);
+
+	// }
 
 	// Cleanup VBO and shader
 	glDeleteBuffers(1, &vertexbuffer);
